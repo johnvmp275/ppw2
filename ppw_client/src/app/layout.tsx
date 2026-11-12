@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { DeliveryNav } from "@/components/modules/delivery/DeliveryNav";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -28,6 +29,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-muted/40" suppressHydrationWarning>
         <DeliveryNav />
         {children}
+        {/* Avisos de sucesso/erro sem trocar de página */}
+        <Toaster richColors position="bottom-right" closeButton />
+
       </body>
     </html>
   );

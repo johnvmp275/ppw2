@@ -1,22 +1,36 @@
 // Passa pelo proxy configurado em next.config.ts (/api -> http://localhost:8000)
 export const API_URL = "/api";
 
+export type Papel = 'ATENDENTE' | 'COZINHEIRO' | 'ENTREGADOR' | 'GERENTE';
+
+export interface Usuario {
+  id: string;
+  nome: string;
+  papel: Papel;
+}
+
 export interface Produto {
   id: string;
   nome: string;
   descricao: string;
   categoria: string;
   preco: number;
+  tempoPreparoMin: number;
+  // null = feito na hora (não controla estoque)
+  estoque: number | null;
   criadoEm: string;
   atualizadoEm: string;
 }
 
-// Corpo enviado ao cadastrar ou alterar um produto
+// Corpo enviado ao cadastrar ou alterar um produto. O estoque só é informado no cadastro;
+// depois disso muda por ajuste (+/-), nunca digitando o valor final.
 export interface ProdutoInput {
   nome: string;
   categoria: string;
   descricao: string;
   preco: number;
+  tempoPreparoMin: number;
+  estoqueInicial?: number | null;
 }
 
 export type StatusPedido =
@@ -24,7 +38,8 @@ export type StatusPedido =
   | 'EM_PREPARO'
   | 'PRONTO_PARA_RETIRADA'
   | 'EM_ROTA_DE_ENTREGA'
-  | 'ENTREGUE';
+  | 'ENTREGUE'
+  | 'CANCELADO';
 
 export interface ItemPedido {
   produtoId: string;
@@ -32,6 +47,17 @@ export interface ItemPedido {
   precoUnitario: number;
   quantidade: number;
   subtotal: number;
+  tempoPreparoMin: number;
+  reservaEstoque: boolean;
+}
+
+// Uma ação da máquina de estados que o perfil atual pode executar agora.
+// Quem decide a lista é o servidor; o front só desenha os botões.
+export interface AcaoDisponivel {
+  nome: string;
+  rotulo: string;
+  destino: StatusPedido;
+  exigeJustificativa: boolean;
 }
 
 export interface Pedido {
@@ -44,44 +70,86 @@ export interface Pedido {
   itens: ItemPedido[];
   total: number;
   status: StatusPedido;
-  historico: { status: StatusPedido; data: string }[];
+  versao: number;
+  entregadorId: string | null;
+  tempoPreparoMin: number;
+  prazoPreparoEm: string | null;
+  atrasado: boolean;
+  valorPerda: number;
+  acoesDisponiveis: AcaoDisponivel[];
   criadoEm: string;
   atualizadoEm: string;
 }
 
-// Corpo enviado ao criar ou alterar um pedido. O preço não vai: o servidor pega do cadastro de produtos.
+export interface RegistroHistorico {
+  id: number;
+  acao: string;
+  estadoAnterior: StatusPedido | null;
+  novoEstado: StatusPedido;
+  autor: { id: string; nome: string; papel: Papel };
+  justificativa: string | null;
+  detalhes: Record<string, unknown> | null;
+  criadoEm: string;
+}
+
+export interface LeadTimeEtapa {
+  status: StatusPedido;
+  pedidos: number;
+  mediaMin: number;
+  maximoMin: number;
+}
+
+// Corpo enviado ao criar um pedido. O preço não vai: o servidor pega do cadastro de produtos.
 export interface PedidoInput {
   cliente: string;
   telefone: string;
   endereco: string;
   observacao: string;
   itens: { produtoId: string; quantidade: number }[];
-  status?: StatusPedido;
 }
 
-// Colunas do kanban, na ordem do fluxo.
-// "acao" é o texto do botão que leva o pedido para a próxima etapa.
-export const ETAPAS: { status: StatusPedido; titulo: string; acao: string; cor: string }[] = [
-  { status: 'RECEBIDO', titulo: 'Recebido', acao: 'Iniciar preparo', cor: 'bg-sky-500' },
-  { status: 'EM_PREPARO', titulo: 'Em preparo', acao: 'Marcar como pronto', cor: 'bg-amber-500' },
-  { status: 'PRONTO_PARA_RETIRADA', titulo: 'Pronto para retirada', acao: 'Saiu para entrega', cor: 'bg-violet-500' },
-  { status: 'EM_ROTA_DE_ENTREGA', titulo: 'Em rota de entrega', acao: 'Confirmar entrega', cor: 'bg-orange-500' },
-  { status: 'ENTREGUE', titulo: 'Entregue', acao: '', cor: 'bg-emerald-500' },
+// Na alteração vão também a versão que o usuário está vendo e, se o preparo já começou, a justificativa
+export interface PedidoUpdateInput extends PedidoInput {
+  versao: number;
+  justificativa?: string;
+}
+
+// Colunas do kanban, na ordem do fluxo
+export const ETAPAS: { status: StatusPedido; titulo: string; cor: string }[] = [
+  { status: 'RECEBIDO', titulo: 'Recebido', cor: 'bg-sky-500' },
+  { status: 'EM_PREPARO', titulo: 'Em preparo', cor: 'bg-amber-500' },
+  { status: 'PRONTO_PARA_RETIRADA', titulo: 'Pronto para retirada', cor: 'bg-violet-500' },
+  { status: 'EM_ROTA_DE_ENTREGA', titulo: 'Em rota de entrega', cor: 'bg-orange-500' },
+  { status: 'ENTREGUE', titulo: 'Entregue', cor: 'bg-emerald-500' },
 ];
 
+export const CANCELADO = { status: 'CANCELADO' as const, titulo: 'Cancelado', cor: 'bg-rose-500' };
+export const TODOS_STATUS = [...ETAPAS, CANCELADO];
+
+// Status em que ainda dá para adicionar/remover itens (mesma regra do servidor)
+export const STATUS_EDITAVEIS: StatusPedido[] = ['RECEBIDO', 'EM_PREPARO'];
+
 export function etapaDoStatus(status: StatusPedido) {
-  return ETAPAS.find((e) => e.status === status) ?? ETAPAS[0];
+  return TODOS_STATUS.find((e) => e.status === status) ?? ETAPAS[0];
 }
 
-export function proximoStatus(status: StatusPedido): StatusPedido | null {
-  const index = ETAPAS.findIndex((e) => e.status === status);
-  return ETAPAS[index + 1]?.status ?? null;
-}
+export const PAPEIS: Record<Papel, string> = {
+  ATENDENTE: 'Atendente',
+  COZINHEIRO: 'Cozinha',
+  ENTREGADOR: 'Entregador',
+  GERENTE: 'Gerente',
+};
 
-export function statusAnterior(status: StatusPedido): StatusPedido | null {
-  const index = ETAPAS.findIndex((e) => e.status === status);
-  return index > 0 ? ETAPAS[index - 1].status : null;
-}
+export const ROTULO_ACAO: Record<string, string> = {
+  CRIAR: 'Pedido lançado',
+  ALTERAR: 'Itens/dados alterados',
+  INICIAR_PREPARO: 'Preparo iniciado',
+  MARCAR_PRONTO: 'Marcado como pronto',
+  DEVOLVER_AO_PREPARO: 'Devolvido ao preparo',
+  DESPACHAR: 'Saiu para entrega',
+  CONFIRMAR_ENTREGA: 'Entrega confirmada',
+  CANCELAR: 'Cancelado',
+};
 
 const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -102,15 +170,28 @@ export function formatarDataHora(dataIso: string) {
   });
 }
 
-export function tempoDecorrido(dataIso: string) {
-  const minutos = Math.floor((Date.now() - new Date(dataIso).getTime()) / 60000);
+export function tempoDecorrido(dataIso: string, agora = Date.now()) {
+  const minutos = Math.floor((agora - new Date(dataIso).getTime()) / 60000);
   if (minutos < 1) return "agora";
   if (minutos < 60) return `há ${minutos} min`;
   const horas = Math.floor(minutos / 60);
   return `há ${horas}h${String(minutos % 60).padStart(2, "0")}`;
 }
 
+// "faltam 12 min" / "atrasado 3 min" em relação ao prazo do SLA
+export function tempoParaPrazo(prazoIso: string, agora = Date.now()) {
+  const minutos = Math.round((new Date(prazoIso).getTime() - agora) / 60000);
+  return minutos >= 0 ? `faltam ${minutos} min` : `atrasado ${-minutos} min`;
+}
+
 export const ERRO_CONEXAO = 'Não foi possível conectar ao servidor. Ele está rodando na porta 8000?';
+
+// Erro com o código HTTP, para a tela reagir diferente a 409 (recarregar) e 403/422 (só avisar)
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
 
 // O Nest devolve { message } nos erros (400, 404...). Mostramos essa mensagem na tela.
 export async function lerErro(response: Response) {
