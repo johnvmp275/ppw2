@@ -1,4 +1,5 @@
 import { PGlite } from '@electric-sql/pglite';
+import { mkdirSync } from 'fs';
 import { Pool, PoolClient } from 'pg';
 
 export interface ResultadoSql<T> {
@@ -33,6 +34,10 @@ export class PgliteDatabase extends Database {
 
   // dataDir: pasta onde os dados ficam salvos, ou "memory://" para um banco descartável
   static async abrir(dataDir: string): Promise<PgliteDatabase> {
+    // O PGlite cria a pasta final, mas não as intermediárias (ex.: "data/" num clone novo)
+    if (!dataDir.includes('://')) {
+      mkdirSync(dataDir, { recursive: true });
+    }
     const db = new PGlite(dataDir);
     await db.waitReady;
     return new PgliteDatabase(db);

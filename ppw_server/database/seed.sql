@@ -2,11 +2,11 @@
 -- Os ids dos usuários são fixos para o front poder "trocar de perfil" sem tela de login.
 
 INSERT INTO usuarios (id, nome, papel) VALUES
-  ('00000000-0000-4000-8000-000000000001', 'Ana (Atendente)',   'ATENDENTE'),
-  ('00000000-0000-4000-8000-000000000002', 'Carlos (Cozinha)',  'COZINHEIRO'),
-  ('00000000-0000-4000-8000-000000000003', 'Edu (Entregador)',  'ENTREGADOR'),
-  ('00000000-0000-4000-8000-000000000004', 'Bia (Entregadora)', 'ENTREGADOR'),
-  ('00000000-0000-4000-8000-000000000005', 'Gabi (Gerente)',    'GERENTE');
+  ('00000000-0000-4000-8000-000000000001', 'Ana', 'ATENDENTE'),
+  ('00000000-0000-4000-8000-000000000002', 'Carlos', 'COZINHEIRO'),
+  ('00000000-0000-4000-8000-000000000003', 'Edu', 'ENTREGADOR'),
+  ('00000000-0000-4000-8000-000000000004', 'Bia', 'ENTREGADOR'),
+  ('00000000-0000-4000-8000-000000000005', 'Gabi', 'GERENTE');
 
 INSERT INTO categorias (nome) VALUES ('Marmitas'), ('Pratos do dia'), ('Bebidas'), ('Sobremesas');
 
