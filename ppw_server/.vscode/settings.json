@@ -1,0 +1,82 @@
+{
+  "window.zoomLevel": 0,
+  "editor.fontSize": 18,
+  "terminal.integrated.fontSize": 18,
+  "editor.suggestFontSize": 18,
+  "debug.console.fontSize": 18,
+
+  "terminal.integrated.defaultProfile.windows": "Git Bash",
+  "terminal.integrated.profiles.windows": {
+    "Git Bash": {
+      "path": "C:\\Program Files\\Git\\bin\\bash.exe"
+    }
+  },
+  "terminal.integrated.tabs.enabled": true,
+
+  "editor.minimap.enabled": false,
+  "workbench.startupEditor": "newUntitledFile",
+  "workbench.editor.labelFormat": "short",
+  "workbench.editor.enablePreview": false,
+  "workbench.editor.enablePreviewFromQuickOpen": false,
+  "workbench.list.smoothScrolling": true,
+  "workbench.localHistory.enabled": true,
+  "workbench.layoutControl.enabled": false,
+
+  "explorer.confirmDelete": true,
+  "explorer.compactFolders": false,
+
+  "breadcrumbs.enabled": false,
+  "editor.largeFileOptimizations": true,
+  "editor.renderControlCharacters": true,
+  "editor.tabSize": 2,
+  "editor.renderLineHighlight": "gutter",
+  "editor.rulers": [120],
+  "editor.detectIndentation": true,
+  "editor.snippetSuggestions": "bottom",
+  "editor.wordBasedSuggestions": "off",
+  "editor.quickSuggestions": {
+    "other": "on",
+    "comments": "off",
+    "strings": true
+  },
+  "editor.quickSuggestionsDelay": 1,
+  "editor.suggestOnTriggerCharacters": false,
+  "editor.parameterHints.enabled": false,
+  "editor.cursorSmoothCaretAnimation": "on",
+  "editor.mouseWheelScrollSensitivity": 1,
+  "editor.fastScrollSensitivity": 4,
+  "editor.smoothScrolling": true,
+  "editor.mouseWheelZoom": true,
+  "editor.fontLigatures": true,
+  "editor.linkedEditing": true,
+  "editor.accessibilitySupport": "off",
+  "editor.renderWhitespace": "none",
+  "editor.glyphMargin": true,
+  "editor.inlineSuggest.enabled": true,
+  "git.enableSmartCommit": true,
+  "git.openRepositoryInParentFolders": "never",
+  "diffEditor.ignoreTrimWhitespace": true,
+
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "explicit"
+  },
+  "eslint.enable": true,
+  "eslint.format.enable": false,
+
+  "files.eol": "\n",
+  "prettier.endOfLine": "lf",
+  "files.autoSave": "onFocusChange",
+  "editor.stickyScroll.enabled": false,
+
+  "js/ts.updateImportsOnFileMove.enabled": "always",
+
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
+}
