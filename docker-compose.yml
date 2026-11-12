@@ -1,0 +1,17 @@
+# PostgreSQL local para quem tem Docker (alternativa ao servidor do laboratório e ao PGlite).
+#   docker compose up -d
+#   DATABASE_URL="postgresql://delivery:delivery@localhost:5432/delivery?schema=delivery"
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: delivery
+      POSTGRES_PASSWORD: delivery
+      POSTGRES_DB: delivery
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
