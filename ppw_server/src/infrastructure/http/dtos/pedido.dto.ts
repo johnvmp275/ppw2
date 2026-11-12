@@ -1,4 +1,4 @@
-// Formato do corpo das requisições. As regras ficam na entidade Pedido.
+// Formato do corpo das requisições. As regras ficam no domínio (entidade, máquina de estados, política).
 export class ItemPedidoDto {
   produtoId!: string;
   quantidade!: number;
@@ -12,10 +12,15 @@ export class CreatePedidoDto {
   itens!: ItemPedidoDto[];
 }
 
+// Adicionais/remoções e dados de entrega. "status" não é aceito: se vier, a API responde 422.
 export class UpdatePedidoDto extends CreatePedidoDto {
-  status?: string;
+  versao!: number;
+  justificativa?: string;
+  status?: unknown;
 }
 
-export class UpdatePedidoStatusDto {
-  status!: string;
+// POST /pedidos/:id/acoes/:acao
+export class ExecutarAcaoDto {
+  versao!: number;
+  justificativa?: string;
 }

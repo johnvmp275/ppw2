@@ -10,6 +10,9 @@ export class ProdutoPresenter {
       descricao: produto.descricao,
       categoria: produto.categoria,
       preco: produto.preco,
+      tempoPreparoMin: produto.tempoPreparoMin,
+      // null = feito na hora
+      estoque: produto.estoque,
       criadoEm: produto.criadoEm.toISOString(),
       atualizadoEm: produto.atualizadoEm.toISOString(),
     };
