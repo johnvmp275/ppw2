@@ -8,11 +8,10 @@ export interface ItemPedidoInput {
 }
 
 // Transforma o que o cliente enviou ({ produtoId, quantidade }) em itens do pedido.
-// O preço vem do cadastro de produtos, e não do cliente.
-// Na edição, itens que o pedido já tinha mantêm o nome e o preço da época da venda,
-// mesmo que o produto tenha mudado de preço ou saído do cardápio.
+// Preço, tempo de preparo e "controla estoque" vêm do cadastro de produtos, nunca do cliente.
+// Na edição, itens que o pedido já tinha mantêm o que foi registrado na venda.
 export async function montarItensPedido(
-  entrada: ItemPedidoInput[],
+  entrada: unknown,
   produtoRepository: ProdutoRepository,
   itensAtuais: readonly ItemPedido[] = [],
 ): Promise<ItemPedido[]> {
@@ -20,22 +19,29 @@ export async function montarItensPedido(
     return [];
   }
 
-  const produtos = await produtoRepository.findAll();
+  const pedidos = entrada.map((item: Partial<ItemPedidoInput> | null) => {
+    if (!item || typeof item.produtoId !== 'string' || !item.produtoId) {
+      throw new ValidationError('Cada item precisa de um produtoId');
+    }
+    return { produtoId: item.produtoId, quantidade: Number(item.quantidade) };
+  });
 
-  return entrada.map((item) => {
+  // Uma única consulta para todos os produtos do pedido (sem N+1)
+  const produtos = await produtoRepository.findByIds([...new Set(pedidos.map((item) => item.produtoId))]);
+
+  return pedidos.map((item) => {
+    const produto = produtos.find((p) => p.id === item.produtoId);
     const itemAtual = itensAtuais.find((i) => i.produtoId === item.produtoId);
+
     if (itemAtual) {
-      return ItemPedido.criar({
-        produtoId: itemAtual.produtoId,
-        nome: itemAtual.nome,
-        precoUnitario: itemAtual.precoUnitario,
-        quantidade: item.quantidade,
-      });
+      if (item.quantidade > itemAtual.quantidade && !produto?.ativo) {
+        throw new ValidationError(`${itemAtual.nome} saiu do cardápio: não dá para aumentar a quantidade`);
+      }
+      return itemAtual.comQuantidade(item.quantidade);
     }
 
-    const produto = produtos.find((p) => p.id === item.produtoId);
-    if (!produto) {
-      throw new ValidationError(`O produto com o id = ${item.produtoId} não existe`);
+    if (!produto || !produto.ativo) {
+      throw new ValidationError(`O produto com o id = ${item.produtoId} não existe ou saiu do cardápio`);
     }
 
     return ItemPedido.criar({
@@ -43,6 +49,8 @@ export async function montarItensPedido(
       nome: produto.nome,
       precoUnitario: produto.preco,
       quantidade: item.quantidade,
+      tempoPreparoMin: produto.tempoPreparoMin,
+      reservaEstoque: produto.controlaEstoque,
     });
   });
 }
