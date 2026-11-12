@@ -11,13 +11,13 @@ import { Produto, formatarMoeda, mensagemDeErro } from "@/lib/delivery";
 import { Pencil, Plus, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import React from "react";
+import { toast } from "sonner";
 
 export default function ProdutoLista() {
 
   const [produtos, setProdutos] = React.useState<Produto[]>([]);
   const [carregando, setCarregando] = React.useState<boolean>(true);
   const [erro, setErro] = React.useState<string>('');
-  const [mensagem, setMensagem] = React.useState<string>('');
 
   const [busca, setBusca] = React.useState<string>('');
   const [categoria, setCategoria] = React.useState<string>('Todas');
@@ -38,15 +38,14 @@ export default function ProdutoLista() {
   }, []);
 
   async function handleDeleteProduto(produto: Produto){
-    if (!window.confirm(`Excluir o produto "${produto.nome}"? Pedidos já feitos não são afetados.`)) return;
+    if (!window.confirm(`Tirar "${produto.nome}" do cardápio? Pedidos já feitos não são afetados.`)) return;
 
     try {
       const { message } = await produtosApi.excluir(produto.id);
-      setMensagem(message);
+      toast.success(message);
       fetchProdutos();
     } catch (error) {
-      setMensagem('');
-      setErro(mensagemDeErro(error));
+      toast.error(mensagemDeErro(error));
     }
   }
 
@@ -93,11 +92,6 @@ export default function ProdutoLista() {
         ))}
       </div>
 
-      {mensagem && (
-        <Alert>
-          <AlertDescription>{mensagem}</AlertDescription>
-        </Alert>
-      )}
       {erro && (
         <Alert variant="destructive">
           <AlertDescription>{erro}</AlertDescription>
@@ -110,6 +104,8 @@ export default function ProdutoLista() {
             <TableRow>
               <TableHead className="pl-4">Nome</TableHead>
               <TableHead>Categoria</TableHead>
+              <TableHead className="text-right">Preparo</TableHead>
+              <TableHead className="text-right">Estoque</TableHead>
               <TableHead className="text-right">Preço</TableHead>
               <TableHead className="w-24 pr-4 text-right">Ações</TableHead>
             </TableRow>
@@ -125,6 +121,12 @@ export default function ProdutoLista() {
                 </TableCell>
                 <TableCell>
                   <Badge variant="secondary">{produto.categoria}</Badge>
+                </TableCell>
+                <TableCell className="text-right text-muted-foreground tabular-nums">{produto.tempoPreparoMin} min</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {produto.estoque === null
+                    ? <span className="text-muted-foreground">feito na hora</span>
+                    : <span className={produto.estoque === 0 ? "font-medium text-destructive" : undefined}>{produto.estoque}</span>}
                 </TableCell>
                 <TableCell className="text-right font-medium tabular-nums">{formatarMoeda(produto.preco)}</TableCell>
                 <TableCell className="pr-4">
@@ -148,7 +150,7 @@ export default function ProdutoLista() {
 
             {!carregando && produtosFiltrados.length === 0 && (
               <TableRow>
-                <TableCell colSpan={4} className="py-10 text-center text-muted-foreground">
+                <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                   {produtos.length === 0 ? 'Nenhum produto cadastrado ainda' : 'Nenhum produto encontrado com esses filtros'}
                 </TableCell>
               </TableRow>

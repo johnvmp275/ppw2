@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { pedidosApi, produtosApi } from "@/lib/api";
-import { Pedido, Produto, formatarMoeda, mensagemDeErro } from "@/lib/delivery";
+import { Produto, formatarMoeda, mensagemDeErro } from "@/lib/delivery";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Minus, Plus, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -31,7 +33,7 @@ export default function Pdv() {
 
   const [status, setStatus] = React.useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [erro, setErro] = React.useState<string>('');
-  const [ultimoPedido, setUltimoPedido] = React.useState<Pedido | null>(null);
+  const router = useRouter();
 
   async function fetchProdutos(){
     try {
@@ -86,8 +88,10 @@ export default function Pdv() {
         itens: carrinho.map((item) => ({ produtoId: item.produto.id, quantidade: item.quantidade })),
       });
 
-      setUltimoPedido(pedido);
-      setStatus('success');
+      toast.success(`Pedido #${pedido.numero} enviado para a cozinha`, {
+        action: { label: 'Ver na cozinha', onClick: () => router.push('/cozinha') },
+      });
+      setStatus('idle');
       setCarrinho([]);
       setCliente('');
       setTelefone('');
@@ -97,6 +101,13 @@ export default function Pdv() {
       setErro(mensagemDeErro(error));
       setStatus('error');
     }
+    // O estoque mudou (a venda baixou, ou outra venda levou o último item): atualiza o catálogo
+    fetchProdutos();
+  }
+
+  // O servidor é quem garante o estoque (UPDATE atômico); aqui só evitamos cliques óbvios demais
+  function semEstoque(produto: Produto) {
+    return produto.estoque !== null && quantidadeNoCarrinho(produto.id) >= produto.estoque;
   }
 
   const categorias = ['Todas', ...new Set(produtos.map((p) => p.categoria))];
@@ -158,8 +169,9 @@ export default function Pdv() {
                 key={produto.id}
                 type="button"
                 onClick={() => adicionarProduto(produto)}
+                disabled={semEstoque(produto)}
                 className={cn(
-                  "relative flex flex-col gap-1 rounded-xl bg-card p-3 text-left ring-1 ring-foreground/10 transition hover:ring-primary active:translate-y-px",
+                  "relative flex flex-col gap-1 rounded-xl bg-card p-3 text-left ring-1 ring-foreground/10 transition hover:ring-primary active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50",
                   quantidade > 0 && "ring-2 ring-primary"
                 )}
               >
@@ -173,7 +185,14 @@ export default function Pdv() {
                 {produto.descricao && (
                   <span className="line-clamp-2 text-xs text-muted-foreground">{produto.descricao}</span>
                 )}
-                <span className="mt-auto pt-2 font-semibold">{formatarMoeda(produto.preco)}</span>
+                <span className="mt-auto flex items-baseline justify-between gap-2 pt-2">
+                  <span className="font-semibold">{formatarMoeda(produto.preco)}</span>
+                  {produto.estoque !== null && (
+                    <span className={cn("text-xs", produto.estoque === 0 ? "text-destructive" : "text-muted-foreground")}>
+                      {produto.estoque === 0 ? 'esgotado' : `${produto.estoque} em estoque`}
+                    </span>
+                  )}
+                </span>
               </button>
             );
           })}
@@ -206,7 +225,7 @@ export default function Pdv() {
                       <Minus />
                     </Button>
                     <span className="w-5 text-center tabular-nums">{item.quantidade}</span>
-                    <Button type="button" size="icon-xs" variant="outline" aria-label="Aumentar" onClick={() => alterarQuantidade(item.produto.id, 1)}>
+                    <Button type="button" size="icon-xs" variant="outline" aria-label="Aumentar" disabled={semEstoque(item.produto)} onClick={() => alterarQuantidade(item.produto.id, 1)}>
                       <Plus />
                     </Button>
                     <Button type="button" size="icon-xs" variant="ghost" className="text-destructive" aria-label="Remover" onClick={() => removerItem(item.produto.id)}>
@@ -224,14 +243,6 @@ export default function Pdv() {
               <Input placeholder="Observação (ex.: sem cebola)" value={observacao} onChange={(e) => setObservacao(e.target.value)} />
             </div>
 
-            {status === 'success' && ultimoPedido && (
-              <Alert>
-                <AlertDescription>
-                  Pedido #{ultimoPedido.numero} enviado para a cozinha.{" "}
-                  <Link href="/cozinha" className="font-medium text-foreground underline">Ver na cozinha</Link>
-                </AlertDescription>
-              </Alert>
-            )}
             {status === 'error' && (
               <Alert variant="destructive">
                 <AlertDescription>{erro}</AlertDescription>

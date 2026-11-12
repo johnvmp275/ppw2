@@ -1,59 +1,69 @@
-import { ETAPAS, Pedido, StatusPedido, formatarHora, formatarMoeda, proximoStatus, statusAnterior, tempoDecorrido } from "@/lib/delivery";
-import { ChevronLeft, MapPin, Pencil, Phone, X } from "lucide-react";
+import { AcoesPedido } from "@/components/modules/delivery/AcoesPedido";
+import { AcaoDisponivel, Pedido, formatarHora, formatarMoeda, tempoDecorrido, tempoParaPrazo } from "@/lib/delivery";
+import { cn } from "@/lib/utils";
+import { Clock, MapPin, Pencil, Phone } from "lucide-react";
 import Link from "next/link";
 import { Button } from "../ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../ui/card";
 
 interface PedidoCardProps {
   pedido: Pedido,
-  onMover: (id: string, status: StatusPedido) => void,
-  onCancelar: (id: string) => void,
+  agora: number,
+  onExecutar: (pedido: Pedido, acao: AcaoDisponivel) => void,
+  desabilitado?: boolean,
 }
 
-export function PedidoCard({ pedido, onMover, onCancelar }: PedidoCardProps){
-  const proximo = proximoStatus(pedido.status);
-  const anterior = statusAnterior(pedido.status);
-  const acao = ETAPAS.find((e) => e.status === pedido.status)?.acao;
+export function PedidoCard({ pedido, agora, onExecutar, desabilitado }: PedidoCardProps){
+  // Só dá para arrastar se o perfil tiver alguma ação que não seja cancelar
+  const arrastavel = pedido.acoesDisponiveis.some((a) => a.destino !== 'CANCELADO');
+  const atrasado = pedido.status === 'EM_PREPARO' && !!pedido.prazoPreparoEm && new Date(pedido.prazoPreparoEm).getTime() < agora;
 
   return (
     <Card
       size="sm"
-      draggable
+      draggable={arrastavel}
       onDragStart={(e) => e.dataTransfer.setData("text/plain", pedido.id)}
-      className="cursor-grab active:cursor-grabbing"
+      className={cn(
+        arrastavel && "cursor-grab active:cursor-grabbing",
+        atrasado && "ring-2 ring-destructive"
+      )}
     >
       <CardHeader>
         <CardTitle className="text-base font-bold">#{pedido.numero} · {pedido.cliente}</CardTitle>
         <CardDescription>
-          {formatarHora(pedido.criadoEm)} · {tempoDecorrido(pedido.criadoEm)}
+          {formatarHora(pedido.criadoEm)} · {tempoDecorrido(pedido.criadoEm, agora)}
         </CardDescription>
-        <CardAction className="flex gap-0.5">
+        <CardAction>
           <Button
             asChild
             size="icon-xs"
             variant="ghost"
             className="text-muted-foreground"
-            aria-label={`Editar pedido ${pedido.numero}`}
+            aria-label={`Abrir pedido ${pedido.numero}`}
           >
             <Link href={`/pedidos/${pedido.id}`} draggable={false}>
               <Pencil />
             </Link>
           </Button>
-          {pedido.status !== 'ENTREGUE' && (
-            <Button
-              size="icon-xs"
-              variant="ghost"
-              className="text-muted-foreground hover:text-destructive"
-              aria-label={`Cancelar pedido ${pedido.numero}`}
-              onClick={() => onCancelar(pedido.id)}
-            >
-              <X />
-            </Button>
-          )}
         </CardAction>
       </CardHeader>
 
       <CardContent className="space-y-2">
+        {/* SLA da cozinha: começa a contar quando o preparo inicia */}
+        {pedido.status === 'EM_PREPARO' && pedido.prazoPreparoEm && (
+          <p
+            className={cn(
+              "flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium",
+              atrasado
+                ? "bg-destructive/10 text-destructive"
+                : "bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200"
+            )}
+          >
+            <Clock className="size-3" />
+            {tempoParaPrazo(pedido.prazoPreparoEm, agora)} · até {formatarHora(pedido.prazoPreparoEm)}
+          </p>
+        )}
+
         <ul className="space-y-0.5">
           {pedido.itens.map((item) => (
             <li key={item.produtoId} className="flex gap-2">
@@ -79,23 +89,9 @@ export function PedidoCard({ pedido, onMover, onCancelar }: PedidoCardProps){
         <p className="font-semibold">{formatarMoeda(pedido.total)}</p>
       </CardContent>
 
-      {(anterior || proximo) && (
-        <CardFooter className="gap-2">
-          {anterior && (
-            <Button
-              size="icon-sm"
-              variant="outline"
-              aria-label="Voltar para a etapa anterior"
-              onClick={() => onMover(pedido.id, anterior)}
-            >
-              <ChevronLeft />
-            </Button>
-          )}
-          {proximo && (
-            <Button size="sm" className="flex-1" onClick={() => onMover(pedido.id, proximo)}>
-              {acao}
-            </Button>
-          )}
+      {pedido.acoesDisponiveis.length > 0 && (
+        <CardFooter>
+          <AcoesPedido pedido={pedido} onExecutar={onExecutar} desabilitado={desabilitado} className="w-full" />
         </CardFooter>
       )}
     </Card>

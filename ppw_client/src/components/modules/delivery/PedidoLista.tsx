@@ -7,23 +7,28 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { pedidosApi } from "@/lib/api";
-import { ETAPAS, Pedido, StatusPedido, formatarDataHora, formatarMoeda, mensagemDeErro } from "@/lib/delivery";
+import { Pedido, StatusPedido, TODOS_STATUS, formatarDataHora, formatarMoeda, mensagemDeErro } from "@/lib/delivery";
+import { useEventosPedidos } from "@/lib/eventos";
+import { useUsuarioId } from "@/lib/sessao";
 import { cn } from "@/lib/utils";
-import { Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Pencil, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 
+// Não existe mais "excluir pedido": apagar a linha apagaria a história dele.
+// Para desistir de um pedido, usa-se a ação Cancelar (com justificativa) na tela do pedido.
 export default function PedidoLista() {
 
+  const usuarioId = useUsuarioId();
   const [pedidos, setPedidos] = React.useState<Pedido[]>([]);
   const [carregando, setCarregando] = React.useState<boolean>(true);
   const [erro, setErro] = React.useState<string>('');
-  const [mensagem, setMensagem] = React.useState<string>('');
 
   const [busca, setBusca] = React.useState<string>('');
   const [filtroStatus, setFiltroStatus] = React.useState<StatusPedido | 'TODOS'>('TODOS');
 
-  async function fetchPedidos(){
+  const fetchPedidos = React.useCallback(async () => {
+    if (!usuarioId) return;
     try {
       setPedidos(await pedidosApi.listar());
       setErro('');
@@ -32,24 +37,14 @@ export default function PedidoLista() {
     } finally {
       setCarregando(false);
     }
-  }
+  }, [usuarioId]);
 
   React.useEffect(() => {
     fetchPedidos();
-  }, []);
+  }, [fetchPedidos]);
 
-  async function handleDeletePedido(pedido: Pedido){
-    if (!window.confirm(`Excluir o pedido #${pedido.numero} de ${pedido.cliente}?`)) return;
-
-    try {
-      const { message } = await pedidosApi.excluir(pedido.id);
-      setMensagem(message);
-      fetchPedidos();
-    } catch (error) {
-      setMensagem('');
-      setErro(mensagemDeErro(error));
-    }
-  }
+  // Lista sempre atualizada: recarrega quando o servidor avisa que algum pedido mudou (SSE)
+  useEventosPedidos('/pedidos/eventos', () => { fetchPedidos(); }, fetchPedidos);
 
   // Busca pelo nome do cliente ou pelo número do pedido
   const termo = busca.trim().toLowerCase().replace('#', '');
@@ -91,7 +86,7 @@ export default function PedidoLista() {
         >
           Todos
         </Button>
-        {ETAPAS.map((etapa) => (
+        {TODOS_STATUS.map((etapa) => (
           <Button
             key={etapa.status}
             size="sm"
@@ -105,11 +100,6 @@ export default function PedidoLista() {
         ))}
       </div>
 
-      {mensagem && (
-        <Alert>
-          <AlertDescription>{mensagem}</AlertDescription>
-        </Alert>
-      )}
       {erro && (
         <Alert variant="destructive">
           <AlertDescription>{erro}</AlertDescription>
@@ -126,7 +116,7 @@ export default function PedidoLista() {
               <TableHead className="text-right">Total</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Criado em</TableHead>
-              <TableHead className="w-24 pr-4 text-right">Ações</TableHead>
+              <TableHead className="w-16 pr-4 text-right">Abrir</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -140,22 +130,21 @@ export default function PedidoLista() {
                 <TableCell className="max-w-64 truncate text-muted-foreground">
                   {pedido.itens.map((item) => `${item.quantidade}× ${item.nome}`).join(', ')}
                 </TableCell>
-                <TableCell className="text-right font-medium tabular-nums">{formatarMoeda(pedido.total)}</TableCell>
-                <TableCell><StatusPedidoBadge status={pedido.status} /></TableCell>
+                <TableCell className="text-right font-medium tabular-nums">
+                  {formatarMoeda(pedido.total)}
+                  {pedido.valorPerda > 0 && (
+                    <p className="text-xs font-normal text-destructive">perda {formatarMoeda(pedido.valorPerda)}</p>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <StatusPedidoBadge status={pedido.status} />
+                  {pedido.atrasado && <p className="mt-0.5 text-xs font-medium text-destructive">atrasado</p>}
+                </TableCell>
                 <TableCell className="text-muted-foreground tabular-nums">{formatarDataHora(pedido.criadoEm)}</TableCell>
                 <TableCell className="pr-4">
-                  <div className="flex justify-end gap-1">
-                    <Button asChild size="icon-sm" variant="ghost" aria-label={`Editar pedido ${pedido.numero}`}>
+                  <div className="flex justify-end">
+                    <Button asChild size="icon-sm" variant="ghost" aria-label={`Abrir pedido ${pedido.numero}`}>
                       <Link href={`/pedidos/${pedido.id}`}><Pencil /></Link>
-                    </Button>
-                    <Button
-                      size="icon-sm"
-                      variant="ghost"
-                      className="text-destructive"
-                      aria-label={`Excluir pedido ${pedido.numero}`}
-                      onClick={() => handleDeletePedido(pedido)}
-                    >
-                      <Trash2 />
                     </Button>
                   </div>
                 </TableCell>
