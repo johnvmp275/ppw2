@@ -91,14 +91,10 @@ export class PgDatabase extends Database {
     super();
     const { connectionString, schema } = separarSchema(databaseUrl);
     this.schema = schema;
-    this.pool = new Pool({ connectionString });
-    // Toda conexão nova do pool passa a enxergar só as tabelas do schema do aluno
-    // (o nome já foi validado acima, por isso pode ir entre aspas no SQL)
-    if (schema) {
-      this.pool.on('connect', (client) => {
-        void client.query(`SET search_path TO "${schema}"`);
-      });
-    }
+    // Toda conexão do pool já nasce com search_path = schema do aluno: o parâmetro vai no
+    // handshake da conexão (como "psql -c"), sem precisar de um SET depois de conectar.
+    // O nome já foi validado pela regex acima.
+    this.pool = new Pool({ connectionString, options: schema ? `-c search_path=${schema}` : undefined });
   }
 
   async criarSchemaSeNaoExistir(): Promise<void> {
