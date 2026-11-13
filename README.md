@@ -65,6 +65,18 @@ npm test            # domínio: máquina de estados, RBAC, guardas, rollback (se
 npm run test:e2e    # API inteira + PostgreSQL em memória (PGlite): concorrência, ACID, auditoria
 ```
 
+Os mesmos testes e2e rodam num **PostgreSQL de verdade**, onde as transações concorrem em paralelo, se for
+passado um schema descartável (o nome precisa terminar em `_teste`, porque ele é apagado e recriado a cada teste):
+
+```bash
+TEST_DATABASE_URL="postgresql://USUARIO:SENHA@10.102.55.11:5432/postgres?schema=SEU_RA_teste" npm run test:e2e
+```
+
+Resultado em 12/11/2026 no servidor do laboratório (PostgreSQL 18.3): **12/12 passando**.
+
+Para zerar o banco de desenvolvimento (a trilha de auditoria não deixa apagar pedidos), apague o schema
+inteiro (`DROP SCHEMA seu_ra CASCADE;`). Na próxima subida, a API recria tabelas e seed.
+
 ---
 
 ## 2. Máquina de estados
@@ -345,9 +357,9 @@ Os antigos `PATCH /pedidos/:id/status` e `DELETE /pedidos/:id` **foram removidos
 - **Identificação simplificada:** o perfil vai no header `X-Usuario-Id`, sem senha. O papel é lido do banco,
   então ninguém se promove trocando o JSON, mas qualquer pessoa pode escolher outro perfil. Em produção seria
   um JWT; a regra de RBAC não muda.
-- **PGlite tem uma conexão só:** as transações ficam em fila, então os testes de concorrência provam o
-  comportamento (uma vence, a outra recebe 409), mas não a disputa real de locks. No PostgreSQL do
-  laboratório as transações rodam em paralelo, e é aí que o `FOR UPDATE` e o `WHERE versao = $n` trabalham.
+- **PGlite tem uma conexão só:** as transações ficam em fila, então no modo padrão os testes de concorrência
+  provam o comportamento, mas não a disputa real de locks. Por isso eles também foram rodados no PostgreSQL do
+  laboratório (`TEST_DATABASE_URL`), onde as transações concorrem de verdade.
 - **SSE em memória:** o barramento (RxJS) vale para uma instância do servidor. Com várias réplicas, ele seria
   trocado por `LISTEN/NOTIFY` do PostgreSQL ou Redis, sem mexer nos casos de uso.
 - O eslint dos dois projetos já estava com erro de configuração antes deste trabalho e não foi alterado.

@@ -57,7 +57,7 @@ com `dotenv`. O `.env` com a URL real **não é versionado**; o repositório tem
 **O que a IA fez:** não tentou conectar no servidor do laboratório. Validou tudo com o PGlite (PostgreSQL
 embutido): 11 testes de domínio, 12 testes e2e e um teste manual no navegador (lançar pedido, iniciar preparo,
 cancelar com justificativa, histórico, página do cliente, evento SSE passando pelo proxy do Next).
-**A conexão com o PostgreSQL do laboratório ainda não foi testada.**
+A conexão com o laboratório foi testada depois, no Prompt 5.
 
 ## Prompt 4: transparência sobre o uso de IA (real)
 
@@ -71,6 +71,23 @@ cancelar com justificativa, histórico, página do cliente, evento SSE passando 
   pergunta isolada. A crítica explica o que estava errado e aponta o teste que comprova a correção.
 - Separou, no fim daquele arquivo, os **erros reais** que a IA cometeu nesta sessão (pegos por testes ou pela
   execução).
+
+## Prompt 5: teste no banco do laboratório (real)
+
+> pode colocar a mão na massa, estou na instituição que libera a conexão com o banco
+
+**O que a IA fez:**
+1. Conectou no PostgreSQL do laboratório (versão 18.3) e conferiu, **antes de criar qualquer coisa**, que o
+   schema `bi3041409` existia e estava vazio.
+2. Subiu a API: as migrações criaram as 8 tabelas e a função do trigger dentro de `bi3041409`, e nada foi criado
+   em `public`.
+3. Pegou um erro próprio pelo log (aviso de depreciação do `pg`; ver erro nº 8 em `docs/ai-decisions.md`) e
+   corrigiu.
+4. Fez os testes e2e aceitarem `TEST_DATABASE_URL` e os rodou no servidor real, num schema descartável
+   `bi3041409_teste` (apagado no fim): **12/12 passando** com transações concorrendo de verdade.
+5. Testou o front ligado ao banco real: lançou o pedido #1 ("Cliente Teste Lab") pelo PDV e conferiu no banco o
+   pedido, o histórico (autor Gabi, `CRIAR`) e a baixa de estoque (refrigerante 24 → 23).
+   **Esse pedido de teste continua no schema `bi3041409`.**
 
 ---
 
@@ -89,7 +106,7 @@ cancelar com justificativa, histórico, página do cliente, evento SSE passando 
 | 2 testes unitários em memória | 11 testes de domínio + 12 e2e em PostgreSQL real (PGlite) |
 
 ## O que o aluno precisa revisar antes da defesa
-- [ ] Testar `npm run start:dev` com a `DATABASE_URL` do laboratório (ainda não testado pela IA).
+- [x] Testar com a `DATABASE_URL` do laboratório (feito no Prompt 5).
 - [ ] Ler `docs/ai-decisions.md` e preencher os campos "Comentário do aluno".
 - [ ] Conseguir explicar sem ajuda o fluxo da seção "Fluxo de uma requisição" do README e mudar ao vivo um
       dos parâmetros da tabela "Parâmetros fáceis de alterar".
