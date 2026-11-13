@@ -4,11 +4,12 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { EventoPedido } from '../src/application/ports/publicador-eventos';
-import { Database } from '../src/infrastructure/database/postgres/database';
+import { Client } from 'pg';
+import { Database, separarSchema } from '../src/infrastructure/database/postgres/database';
 import { RxPublicadorEventos } from '../src/infrastructure/events/rx-publicador-eventos';
 
-// Sobe a API inteira com um PostgreSQL (PGlite) em memória, novo a cada teste,
-// com as mesmas migrações e o mesmo seed do ambiente de desenvolvimento.
+// Sobe a API inteira com um banco novo a cada teste (PGlite em memória, ou um schema
+// descartável num PostgreSQL real), com as mesmas migrações e o mesmo seed do desenvolvimento.
 const ATENDENTE = '00000000-0000-4000-8000-000000000001';
 const COZINHEIRO = '00000000-0000-4000-8000-000000000002';
 const ENTREGADOR = '00000000-0000-4000-8000-000000000003';
@@ -20,13 +21,35 @@ const PUDIM = '10000000-0000-4000-8000-000000000006'; // estoque 3
 
 const entrega = { cliente: 'Maria Souza', endereco: 'Rua A, 10' };
 
-describe('API de delivery (e2e)', () => {
+// Opcional: TEST_DATABASE_URL roda os mesmos testes num PostgreSQL de verdade, onde as transações
+// concorrem em paralelo (no PGlite elas entram em fila). O schema é APAGADO e recriado a cada teste,
+// por isso só aceitamos nomes terminados em "_teste".
+const URL_TESTE = process.env.TEST_DATABASE_URL;
+
+async function recriarSchemaDeTeste(url: string, recriar: boolean) {
+  const { connectionString, schema } = separarSchema(url);
+  if (!schema?.endsWith('_teste')) {
+    throw new Error('TEST_DATABASE_URL precisa de ?schema=<nome>_teste (o schema é apagado a cada teste)');
+  }
+  const client = new Client({ connectionString });
+  await client.connect();
+  await client.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`);
+  if (recriar) await client.query(`CREATE SCHEMA "${schema}"`);
+  await client.end();
+}
+
+describe(`API de delivery (e2e) - ${URL_TESTE ? 'PostgreSQL real' : 'PGlite'}`, () => {
   let app: INestApplication<App>;
   let db: Database;
 
   beforeEach(async () => {
-    process.env.PGLITE_DIR = 'memory://';
-    delete process.env.DATABASE_URL;
+    if (URL_TESTE) {
+      await recriarSchemaDeTeste(URL_TESTE, true);
+      process.env.DATABASE_URL = URL_TESTE;
+    } else {
+      process.env.PGLITE_DIR = 'memory://';
+      delete process.env.DATABASE_URL;
+    }
 
     const moduleFixture: TestingModule = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleFixture.createNestApplication();
@@ -36,6 +59,10 @@ describe('API de delivery (e2e)', () => {
 
   afterEach(async () => {
     await app.close();
+  });
+
+  afterAll(async () => {
+    if (URL_TESTE) await recriarSchemaDeTeste(URL_TESTE, false);
   });
 
   const api = () => request(app.getHttpServer());
