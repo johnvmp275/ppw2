@@ -14,8 +14,8 @@
 >     implementado no lugar e qual teste comprova.
 > - Os erros **reais** que a IA cometeu durante a implementação (e que os testes ou a execução pegaram) estão
 >   separados na última seção.
-> - Espaço do aluno: no fim de cada decisão há um campo para o aluno registrar com as próprias palavras se
->   concorda com a crítica.
+> - **Comentários no fim de cada decisão:** o aluno pediu que a IA também preenchesse estes campos. Por isso
+>   eles estão marcados com 🤖 e **não são a opinião escrita pelo aluno**.
 
 ---
 
@@ -66,7 +66,8 @@ EM_ROTA e depois para RECEBIDO).
 Testes: `maquina-estados-pedido.spec.ts` (11 casos, incluindo "é aberta para extensão (OCP)") e o e2e
 "não aceita status por formulário".
 
-*Comentário do aluno:* ______________________________________________
+**🤖 Comentário no lugar do aluno** *(escrito pela IA: o aluno pediu que a IA preenchesse este campo e não o editou)*:
+> A lição principal é que "validar a transição" não basta: o enunciado pede que o status mude por **eventos**, com permissão e condição. Colocar cada ação numa classe deixou o código maior que o mapa da resposta bruta, mas cada regra ficou num lugar só, e acrescentar uma ação nova não mexe nas outras. Na defesa, o ponto a mostrar é que a máquina não tem nenhum `if` por ação.
 
 ---
 
@@ -94,7 +95,8 @@ Testes: `maquina-estados-pedido.spec.ts` (11 casos, incluindo "é aberta para ex
    `useEventosPedidos` recarrega a tela no `onopen` após uma queda.
 5. **Limitação assumida:** o barramento RxJS é em memória (uma instância). Com várias réplicas seria `LISTEN/NOTIFY`.
 
-*Comentário do aluno:* ______________________________________________
+**🤖 Comentário no lugar do aluno** *(escrito pela IA: o aluno pediu que a IA preenchesse este campo e não o editou)*:
+> WebSocket funcionaria, mas o problema é só "servidor avisa o navegador", e o SSE resolve isso com HTTP comum. O erro mais sério da resposta bruta não era a tecnologia, e sim publicar **antes do commit** e mandar dados de todos os clientes para todo mundo. Mandar só o id e deixar cada tela buscar com o próprio perfil resolve as duas coisas.
 
 ---
 
@@ -119,7 +121,8 @@ Testes: `maquina-estados-pedido.spec.ts` (11 casos, incluindo "é aberta para ex
 3. Teste e2e "concorrência: duas ações simultâneas na mesma versão": com `Promise.all`, uma requisição recebe 200 e
    a outra 409, e o histórico tem exatamente uma transição.
 
-*Comentário do aluno:* ______________________________________________
+**🤖 Comentário no lugar do aluno** *(escrito pela IA: o aluno pediu que a IA preenchesse este campo e não o editou)*:
+> Este é o ponto menos intuitivo: transação não impede que duas pessoas leiam o mesmo valor e decidam em cima dele. São duas proteções diferentes: o `FOR UPDATE` resolve a disputa dentro do banco, e a `versao` resolve a pessoa que decidiu olhando uma tela desatualizada. Os testes no PostgreSQL do laboratório mostraram o 409 acontecendo de verdade.
 
 ---
 
@@ -150,7 +153,8 @@ Testes: `maquina-estados-pedido.spec.ts` (11 casos, incluindo "é aberta para ex
 5. **Rastreabilidade:** cada movimento vai para `movimentacoes_estoque` com `saldo_apos`.
 6. Teste e2e: 5 vendas simultâneas de pudim com estoque 3 resultam em 3 × 201, 2 × 409 e estoque final 0.
 
-*Comentário do aluno:* ______________________________________________
+**🤖 Comentário no lugar do aluno** *(escrito pela IA: o aluno pediu que a IA preenchesse este campo e não o editou)*:
+> O padrão "ler, calcular e salvar" aparece em quase todo CRUD e é exatamente o que causa venda duplicada. A troca por um `UPDATE` com a condição no `WHERE` é pequena no código e resolve o problema inteiro; o `CHECK` no banco serve de rede de segurança. O mesmo raciocínio pegou um bug que não estava na pergunta: o formulário de produto sobrescrevia o estoque.
 
 ---
 
@@ -170,7 +174,8 @@ Correção: `CREATE SEQUENCE pedidos_numero_seq` + `numero ... UNIQUE DEFAULT ne
 transacional e nunca repete (pode pular números em rollback, o que é aceitável para um número de exibição).
 O teste das 5 vendas simultâneas confere que os números são distintos.
 
-*Comentário do aluno:* ______________________________________________
+**🤖 Comentário no lugar do aluno** *(escrito pela IA: o aluno pediu que a IA preenchesse este campo e não o editou)*:
+> A resposta bruta parecia correta porque "está dentro da transação", mas o isolamento padrão do PostgreSQL não esconde o `max` de duas transações ao mesmo tempo. A `SEQUENCE` é a ferramenta própria do banco para isso. O número pode pular quando uma transação dá rollback, o que não é problema para um número de exibição.
 
 ---
 
@@ -193,7 +198,8 @@ O teste das 5 vendas simultâneas confere que os números são distintos.
 4. **Justificativa obrigatória** e detalhes (o que voltou, o que foi perdido) gravados no histórico em JSONB.
 5. A mesma lógica vale para **remoções** de item durante o preparo (`politica-alteracao-pedido.ts`).
 
-*Comentário do aluno:* ______________________________________________
+**🤖 Comentário no lugar do aluno** *(escrito pela IA: o aluno pediu que a IA preenchesse este campo e não o editou)*:
+> A regra de negócio aqui não é técnica, é da cozinha: o que já foi para o fogo não volta. Por isso cada item guarda, no momento da venda, se baixou estoque. Sem essa informação não daria para saber, no cancelamento, o que devolver e o que contar como perda. Também ficou claro que o momento do cancelamento muda tanto o efeito quanto quem pode cancelar.
 
 ---
 
@@ -216,7 +222,8 @@ O teste das 5 vendas simultâneas confere que os números são distintos.
    no próprio banco".
 4. CHECK `(acao = 'CRIAR') = (estado_anterior IS NULL)`: só a criação não tem estado anterior.
 
-*Comentário do aluno:* ______________________________________________
+**🤖 Comentário no lugar do aluno** *(escrito pela IA: o aluno pediu que a IA preenchesse este campo e não o editou)*:
+> Trigger para auditoria parece a solução mais segura ("ninguém esquece"), mas o banco não sabe quem é o usuário da aplicação nem qual foi a justificativa, que são justamente os campos exigidos. A solução final usa o trigger para o que ele faz bem (impedir alteração e exclusão) e grava o registro pela aplicação, na mesma transação.
 
 ---
 
@@ -236,7 +243,8 @@ entrada com a 2ª saída e gera tempos duplicados e errados. Correção: funçã
 ignorando registros `ALTERAR` (que não mudam a etapa). Ver `pg-historico.repository.ts → leadTimePorEtapa`.
 O teste e2e do fluxo completo passa por esse caso.
 
-*Comentário do aluno:* ______________________________________________
+**🤖 Comentário no lugar do aluno** *(escrito pela IA: o aluno pediu que a IA preenchesse este campo e não o editou)*:
+> O self-join funciona no caso feliz e quebra quando o fluxo tem volta (devolver ao preparo), que é justamente o caso interessante. A função de janela `LEAD()` compara cada registro com o próximo do mesmo pedido e não depende de o status ser único. É uma boa pergunta para a defesa: "e se o pedido passar duas vezes pela mesma coluna?".
 
 ---
 
